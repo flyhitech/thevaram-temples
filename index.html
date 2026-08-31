@@ -16,16 +16,32 @@
             text-align: center;
             color: #b33939;
         }
-        .search-container {
+        .controls-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .search-container {
+            flex-grow: 1;
             text-align: center;
         }
         input[type="text"] {
-            width: 50%;
+            width: 60%;
             padding: 10px;
             font-size: 16px;
             border: 1px solid #ccc;
             border-radius: 4px;
+        }
+        .per-page-container {
+            font-size: 14px;
+        }
+        .per-page-container select {
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
         }
         table {
             width: 100%;
@@ -42,6 +58,25 @@
         th {
             background-color: #b33939;
             color: white;
+            cursor: pointer;
+            position: relative;
+            user-select: none;
+        }
+        th:hover {
+            background-color: #962f2f;
+        }
+        th::after {
+            content: ' ↕';
+            font-size: 12px;
+            opacity: 0.6;
+        }
+        th.asc::after {
+            content: ' ▲';
+            opacity: 1;
+        }
+        th.desc::after {
+            content: ' ▼';
+            opacity: 1;
         }
         tr:nth-child(even) {
             background-color: #f2f2f2;
@@ -53,28 +88,61 @@
         a:hover {
             text-decoration: underline;
         }
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .pagination-buttons button {
+            padding: 8px 12px;
+            margin: 0 2px;
+            background-color: #b33939;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .pagination-buttons button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .pagination-buttons button:hover:not(:disabled) {
+            background-color: #962f2f;
+        }
     </style>
 </head>
 <body>
 
     <h1>தேவாரத் திருத்தலங்கள் அட்டவணை</h1>
     
-    <div class="search-container">
-        <input type="text" id="searchInput" placeholder="தலங்கள் அல்லது பதிகம் தேடு..." onkeyup="searchTable()">
+    <div class="controls-container">
+        <div class="per-page-container">
+            <label for="rowsPerPage">வழங்கும் வரிசைகள்: </label>
+            <select id="rowsPerPage" onchange="changeRowsPerPage()">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="தலங்கள் அல்லது பதிகம் தேட..." onkeyup="filterData()">
+        </div>
     </div>
 
     <table id="thirumuraiTable">
         <thead>
             <tr>
-                <th>எண்</th>
-                <th>தலம்</th>
-                <th>நாடு</th>
-                <th>மொத்த பாடல்கள்</th>
-                <th>அருளியவர்</th>
-                <th>திருமுறை</th>
-                <th>பதிக எண்</th>
-                <th>பண்</th>
-                <th>பதிகம்</th>
+                <th onclick="sortTable(0)">எண்</th>
+                <th onclick="sortTable(1)">தலம்</th>
+                <th onclick="sortTable(2)">மொத்த பாடல்கள்</th>
+                <th onclick="sortTable(3)">அருளியவர்</th>
+                <th onclick="sortTable(4)">திருமுறை</th>
+                <th onclick="sortTable(5)">பதிக எண்</th>
+                <th onclick="sortTable(6)">பண்</th>
+                <th onclick="sortTable(7)">பதிகம்</th>
                 <th>Shaivam Link</th>
             </tr>
         </thead>
@@ -83,47 +151,182 @@
         </tbody>
     </table>
 
+    <div class="pagination-container">
+        <div id="paginationInfo">Showing 0 to 0 of 0 entries</div>
+        <div class="pagination-buttons" id="paginationButtons">
+            <!-- Pagination buttons generated dynamically -->
+        </div>
+    </div>
+
     <script>
+        let allData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        let rowsPerPage = 25;
+        let currentSortColumn = -1;
+        let sortDirection = 'asc'; // 'asc' or 'desc'
+
         async function loadData() {
             try {
                 const response = await fetch('data.json');
-                const data = await response.json();
-                const tbody = document.getElementById('tableBody');
-                
-                data.forEach(row => {
-                    const tr = document.createElement('tr');
-                    
-                    // Create Shaivam link using the first or main Pathigam name
-                    const pathigamValue = encodeURIComponent(row.பதிகம்.split(',')[0].trim());
-                    const shaivamLink = `https://shaivam.org/thirumuraiSearch/search/?searchThirumurai=${pathigamValue}`;
-
-                    tr.innerHTML = `
-                        <td>${row.எண்}</td>
-                        <td>${row.தலம்}</td>
-                        <td>${row.நாடு}</td>
-                        <td>${row.மொத்த_பாடல்கள்}</td>
-                        <td>${row.அருளியவர்}</td>
-                        <td>${row.திருமுறை}</td>
-                        <td>${row.பதிக_எண்}</td>
-                        <td>${row.பண்}</td>
-                        <td>${row.பதிகம்}</td>
-                        <td><a href="${shaivamLink}" target="_blank">View on Shaivam</a></td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+                allData = await response.json();
+                filteredData = [...allData];
+                renderTable();
             } catch (error) {
                 console.error('Error loading JSON data:', error);
             }
         }
 
-        function searchTable() {
+        function filterData() {
             const input = document.getElementById('searchInput').value.toLowerCase();
-            const rows = document.getElementById('tableBody').getElementsByTagName('tr');
-
-            for (let i = 0; i < rows.length; i++) {
-                const textValue = rows[i].textContent.toLowerCase();
-                rows[i].style.display = textValue.includes(input) ? '' : 'none';
+            
+            if (!input) {
+                filteredData = [...allData];
+            } else {
+                filteredData = allData.filter(row => {
+                    return Object.values(row).some(val => 
+                        String(val).toLowerCase().includes(input)
+                    );
+                });
             }
+            
+            currentPage = 1; // Reset to first page on search
+            renderTable();
+        }
+
+        function sortTable(columnIndex) {
+            // Map column index to keys in json data objects
+            const keys = ['எண்', 'தலம்', 'மொத்த_பாடல்கள்', 'அருளியவர்', 'திருமுறை', 'பதிக_எண்', 'பண்', 'பதிகம்'];
+            const key = keys[columnIndex];
+
+            if (!key) return;
+
+            if (currentSortColumn === columnIndex) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = columnIndex;
+                sortDirection = 'asc';
+            }
+
+            // Update header styles
+            const headers = document.querySelectorAll('th');
+            headers.forEach((th, idx) => {
+                th.classList.remove('asc', 'desc');
+                if (idx === columnIndex) {
+                    th.classList.add(sortDirection);
+                }
+            });
+
+            filteredData.sort((a, b) => {
+                let valA = a[key];
+                let valB = b[key];
+
+                // Numeric comparison for index/number fields if applicable
+                let numA = parseFloat(valA);
+                let numB = parseFloat(valB);
+
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return sortDirection === 'asc' ? numA - numB : numB - numA;
+                }
+
+                // String comparison for Tamil text
+                valA = String(valA).toLowerCase();
+                valB = String(valB).toLowerCase();
+
+                if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+                if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            const startIdx = (currentPage - 1) * rowsPerPage;
+            const endIdx = startIdx + rowsPerPage;
+            const paginatedData = filteredData.slice(startIdx, endIdx);
+
+            if (paginatedData.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="9" style="text-align: center;">தரவுகள் இல்லை (No data found)</td>`;
+                tbody.appendChild(tr);
+            } else {
+                paginatedData.forEach(row => {
+                    const tr = document.createElement('tr');
+                    const pathigamValue = encodeURIComponent((row.பதிகம் || '').split(',')[0].trim());
+                    const shaivamLink = `https://shaivam.org/thirumuraiSearch/search/?searchThirumurai=${pathigamValue}`;
+
+                    tr.innerHTML = `
+                        <td>${row.எண் || ''}</td>
+                        <td>${row.தலம் || ''}</td>
+                        <td>${row.மொத்த_பாடல்கள் || ''}</td>
+                        <td>${row.அருளியவர் || ''}</td>
+                        <td>${row.திருமுறை || ''}</td>
+                        <td>${row.பதிக_எண் || ''}</td>
+                        <td>${row.பண் || ''}</td>
+                        <td>${row.பதிகம் || ''}</td>
+                        <td><a href="${shaivamLink}" target="_blank">View on Shaivam</a></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            renderPaginationControls();
+        }
+
+        function renderPaginationControls() {
+            const totalRows = filteredData.length;
+            const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+            
+            const startEntry = totalRows === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+            const endEntry = Math.min(currentPage * rowsPerPage, totalRows);
+
+            document.getElementById('paginationInfo').innerText = 
+                `Showing ${startEntry} to ${endEntry} of ${totalRows} entries`;
+
+            const buttonsContainer = document.getElementById('paginationButtons');
+            buttonsContainer.innerHTML = '';
+
+            // Previous Button
+            const prevBtn = document.createElement('button');
+            prevBtn.innerText = 'முந்தைய (Prev)';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable();
+                }
+            };
+            buttonsContainer.appendChild(prevBtn);
+
+            // Page info/number display or simple pagination buttons can go here. 
+            // For concise implementation, we show current page status
+            const pageSpan = document.createElement('span');
+            pageSpan.style.margin = '0 10px';
+            pageSpan.innerText = `Page ${currentPage} of ${totalPages}`;
+            buttonsContainer.appendChild(pageSpan);
+
+            // Next Button
+            const nextBtn = document.createElement('button');
+            nextBtn.innerText = 'அடுத்த (Next)';
+            nextBtn.disabled = currentPage === totalPages || totalRows === 0;
+            nextBtn.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderTable();
+                }
+            };
+            buttonsContainer.appendChild(nextBtn);
+        }
+
+        function changeRowsPerPage() {
+            const select = document.getElementById('rowsPerPage');
+            rowsPerPage = parseInt(select.value);
+            currentPage = 1;
+            renderTable();
         }
 
         window.onload = loadData;
