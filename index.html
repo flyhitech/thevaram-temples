@@ -137,12 +137,13 @@
             <tr>
                 <th onclick="sortTable(0)">எண்</th>
                 <th onclick="sortTable(1)">தலம்</th>
-                <th onclick="sortTable(2)">மொத்த பாடல்கள்</th>
-                <th onclick="sortTable(3)">அருளியவர்</th>
-                <th onclick="sortTable(4)">திருமுறை</th>
-                <th onclick="sortTable(5)">பதிக எண்</th>
-                <th onclick="sortTable(6)">பண்</th>
-                <th onclick="sortTable(7)">பதிகம்</th>
+                <th onclick="sortTable(2)">நாடு</th>
+                <th onclick="sortTable(3)">மொத்த பாடல்கள்</th>
+                <th onclick="sortTable(4)">அருளியவர்</th>
+                <th onclick="sortTable(5)">திருமுறை</th>
+                <th onclick="sortTable(6)">பதிக எண்</th>
+                <th onclick="sortTable(7)">பண்</th>
+                <th onclick="sortTable(8)">பதிகம்</th>
                 <th>Shaivam Link</th>
             </tr>
         </thead>
@@ -196,7 +197,7 @@
 
         function sortTable(columnIndex) {
             // Map column index to keys in json data objects
-            const keys = ['எண்', 'தலம்', 'மொத்த_பாடல்கள்', 'அருளியவர்', 'திருமுறை', 'பதிக_எண்', 'பண்', 'பதிகம்'];
+            const keys = ['எண்', 'தலம்', 'நாடு','மொத்த_பாடல்கள்', 'அருளியவர்', 'திருமுறை', 'பதிக_எண்', 'பண்', 'பதிகம்'];
             const key = keys[columnIndex];
 
             if (!key) return;
@@ -262,6 +263,7 @@
                     tr.innerHTML = `
                         <td>${row.எண் || ''}</td>
                         <td>${row.தலம் || ''}</td>
+                        <td>${row.நாடு || ''}</td>
                         <td>${row.மொத்த_பாடல்கள் || ''}</td>
                         <td>${row.அருளியவர் || ''}</td>
                         <td>${row.திருமுறை || ''}</td>
